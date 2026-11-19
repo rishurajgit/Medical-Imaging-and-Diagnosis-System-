@@ -1,0 +1,21 @@
+seed: 42
+
+classification:
+  dataset: nih_chestxray14
+  architecture: densenet121
+  image_size: 224
+  epochs: 20
+  batch_size: 32
+  learning_rate: 0.0001
+  uncertain_policy: zeros
+  eval_threshold: 0.5
+
+segmentation:
+  dataset: msd_task06_lung
+  architecture: monai_unet3d
+  hu_min: -1000
+  hu_max: 400
+  roi_size: [96, 96, 96]
+  epochs: 100
+  batch_size: 2
+  learning_rate: 0.0001

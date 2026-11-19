@@ -1,0 +1,123 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-medvision}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_postgres_password}
+      POSTGRES_DB: ${POSTGRES_DB:-medvision_pacs}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - medvision_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-medvision} -d ${POSTGRES_DB:-medvision_pacs}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  orthanc:
+    image: orthancteam/orthanc:24.8.1
+    restart: unless-stopped
+    environment:
+      ORTHANC_JSON: |
+        {
+          "Name": "MedVision Educational Orthanc PACS",
+          "DicomAet": "MEDVISION",
+          "DicomPort": 4242,
+          "HttpPort": 8042,
+          "RemoteAccessAllowed": true,
+          "AuthenticationEnabled": true,
+          "RegisteredUsers": {
+            "orthanc_admin": "${ORTHANC_PASSWORD:-change_me_orthanc_password}"
+          },
+          "DicomWeb": {
+            "Enable": true,
+            "Root": "/dicom-web/"
+          }
+        }
+    ports:
+      # Bound strictly to localhost so Orthanc admin interface is NEVER publicly exposed
+      - "127.0.0.1:4242:4242"
+      - "127.0.0.1:8042:8042"
+    volumes:
+      - orthanc_data:/var/lib/orthanc/db
+      - ./orthanc/orthanc.json:/etc/orthanc/orthanc.reference.json:ro
+    networks:
+      - medvision_internal
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u orthanc_admin:${ORTHANC_PASSWORD:-change_me_orthanc_password} http://localhost:8042/system || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-medvision}:${POSTGRES_PASSWORD:-change_me_postgres_password}@postgres:5432/${POSTGRES_DB:-medvision_pacs}
+      ORTHANC_URL: http://orthanc:8042
+      ORTHANC_USERNAME: orthanc_admin
+      ORTHANC_PASSWORD: ${ORTHANC_PASSWORD:-change_me_orthanc_password}
+      STORAGE_DIR: /app/storage
+      MODELS_DIR: /app/models
+      REPORTS_DIR: /app/reports
+      CXR_WEIGHTS_PATH: /app/models/densenet121_nih14.pth
+      SEG_WEIGHTS_PATH: /app/models/monai_unet3d_task06_lung.pth
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      REQUIRE_AUTH: ${REQUIRE_AUTH:-false}
+      API_AUTH_TOKEN: ${API_AUTH_TOKEN:-}
+      DEVICE: ${DEVICE:-auto}
+    ports:
+      - "8000:8000"
+    volumes:
+      - imaging_storage:/app/storage
+      - ./models:/app/models:ro
+      - ./reports:/app/reports:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      orthanc:
+        condition: service_healthy
+    networks:
+      - medvision_internal
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      FASTAPI_BACKEND_URL: http://backend:8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - medvision_internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  orthanc_data:
+  imaging_storage:
+
+networks:
+  medvision_internal:
+    driver: bridge

@@ -1,0 +1,23 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+!backend/.env.example
+
+# Python & ML artifacts (tracked via DVC, never committed to Git)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+backend/storage/
+data/raw/
+data/processed/
+data/uploads/
+models/*.pth
+models/*.pt
+*.db
+.dvc/cache/
+.dvc/tmp/

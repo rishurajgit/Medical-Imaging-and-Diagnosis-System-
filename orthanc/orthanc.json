@@ -1,0 +1,29 @@
+{
+  "Name": "MedVision Educational Orthanc PACS",
+  "StorageDirectory": "/var/lib/orthanc/db",
+  "IndexDirectory": "/var/lib/orthanc/db",
+  "StorageCompression": false,
+  "MaximumStorageSize": 0,
+  "MaximumPatientCount": 0,
+  "HttpServerEnabled": true,
+  "HttpPort": 8042,
+  "HttpDescribeErrors": true,
+  "DicomServerEnabled": true,
+  "DicomAet": "MEDVISION",
+  "DicomCheckCalledAet": false,
+  "DicomPort": 4242,
+  "RemoteAccessAllowed": true,
+  "SslEnabled": false,
+  "AuthenticationEnabled": true,
+  "RegisteredUsers": {
+    "orthanc_admin": "REPLACE_VIA_ENV_IN_DOCKER_COMPOSE"
+  },
+  "DicomWeb": {
+    "Enable": true,
+    "Root": "/dicom-web/",
+    "EnableWado": true,
+    "WadoRoot": "/wado"
+  },
+  "LimitFindResults": 200,
+  "LimitFindInstances": 1000
+}

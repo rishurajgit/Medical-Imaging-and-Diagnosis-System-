@@ -1,0 +1,78 @@
+stages:
+  train_cxr_densenet121:
+    cmd: >-
+      python -m app.ml.classification.train
+      --data-dir data/raw/nih_chestxray14
+      --output models/densenet121_nih14.pth
+      --splits-dir data/processed/nih14_splits
+      --epochs ${classification.epochs}
+      --batch-size ${classification.batch_size}
+      --lr ${classification.learning_rate}
+      --uncertain-policy ${classification.uncertain_policy}
+      --seed ${seed}
+    wdir: .
+    deps:
+      - data/raw/nih_chestxray14
+      - backend/app/ml/classification/model.py
+      - backend/app/ml/classification/train.py
+    params:
+      - seed
+      - classification
+    outs:
+      - data/processed/nih14_splits
+      - models/densenet121_nih14.pth
+
+  evaluate_cxr_densenet121:
+    cmd: >-
+      python -m app.ml.classification.evaluate
+      --data-dir data/raw/nih_chestxray14
+      --test-csv data/processed/nih14_splits/test_split.csv
+      --checkpoint models/densenet121_nih14.pth
+      --report reports/classification_metrics.json
+      --threshold ${classification.eval_threshold}
+    wdir: .
+    deps:
+      - data/processed/nih14_splits/test_split.csv
+      - models/densenet121_nih14.pth
+      - backend/app/ml/classification/evaluate.py
+    params:
+      - classification.eval_threshold
+    metrics:
+      - reports/classification_metrics.json:
+          cache: false
+
+  train_lung_ct_unet3d:
+    cmd: >-
+      python -m app.ml.segmentation.train
+      --data-dir data/raw/msd_task06_lung
+      --output models/monai_unet3d_task06_lung.pth
+      --splits data/processed/task06_lung_splits.json
+      --epochs ${segmentation.epochs}
+      --batch-size ${segmentation.batch_size}
+      --lr ${segmentation.learning_rate}
+    wdir: .
+    deps:
+      - data/raw/msd_task06_lung
+      - backend/app/ml/segmentation/model.py
+      - backend/app/ml/segmentation/train.py
+    params:
+      - seed
+      - segmentation
+    outs:
+      - data/processed/task06_lung_splits.json
+      - models/monai_unet3d_task06_lung.pth
+
+  evaluate_lung_ct_unet3d:
+    cmd: >-
+      python -m app.ml.segmentation.evaluate
+      --splits data/processed/task06_lung_splits.json
+      --checkpoint models/monai_unet3d_task06_lung.pth
+      --report reports/segmentation_metrics.json
+    wdir: .
+    deps:
+      - data/processed/task06_lung_splits.json
+      - models/monai_unet3d_task06_lung.pth
+      - backend/app/ml/segmentation/evaluate.py
+    metrics:
+      - reports/segmentation_metrics.json:
+          cache: false

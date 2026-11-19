@@ -1,0 +1,6 @@
+{
+  "name": "MedVision PACS",
+  "description": "AI-assisted medical imaging workstation with Grad-CAM explainability, MONAI segmentation overlays, radiologist sign-off, and audit logging. For education only, not clinical use.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
